@@ -1,0 +1,469 @@
+```html
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What the Feed Knows</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: a phone feed on the left, the algorithm's graph-paper notebook on the right; stacks on phones. */
+:root{
+  --bg:#E9EDF2; --paper:#FFFFFF; --ink:#17202B; --muted:#5A6576; --line:#D2D9E2;
+  --accent:#3F33C9; --accent-ink:#FFFFFF; --rec:#E0362C; --redact:#17202B; --ok:#1F8A5B;
+  --ph-body:#0A0C11; --ph-screen:#11151D; --ph-fg:#EEF1F6; --ph-muted:#8C96A6; --ph-line:#262D3A; --ph-toast:#2A3140; --ph-like:#E6406E;
+  --f-display:"Syne","Noto Sans TC","Arial Black",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","Noto Sans TC",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono","Noto Sans TC",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1218; --paper:#171C25; --ink:#E6EAF1; --muted:#97A2B2; --line:#2A3240;
+  --accent:#8E86FF; --accent-ink:#0E1218; --rec:#FF5A4F; --redact:#C9D0DB; --ok:#4CC38A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1218; --paper:#171C25; --ink:#E6EAF1; --muted:#97A2B2; --line:#2A3240;
+  --accent:#8E86FF; --accent-ink:#0E1218; --rec:#FF5A4F; --redact:#C9D0DB; --ok:#4CC38A; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.55 var(--f-body);margin:0}
+.page{max-width:1120px;margin:0 auto;padding-block:32px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:28px}
+.mast{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:16px}
+.mast > div{min-width:0;flex:1 1 420px}
+.eyebrow{margin:0;font:500 12px/1.4 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{margin:6px 0 10px;font:800 clamp(34px,6vw,60px)/1.05 var(--f-display);letter-spacing:-.02em;text-wrap:balance}
+html[lang="zh-Hant"] h1{letter-spacing:.02em;font-weight:900}
+.lede{margin:0;max-width:62ch;color:var(--muted);font-size:17px}
+.lang{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--paper);padding:3px;flex:none}
+.lang button{border:0;background:transparent;color:var(--muted);font:600 13px var(--f-body);padding:6px 14px;border-radius:999px;cursor:pointer}
+.lang button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.stage{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:32px;align-items:start}
+@media (max-width:860px){.stage{grid-template-columns:minmax(0,1fr)}.phone{max-width:400px;width:100%;margin:0 auto}}
+
+/* Phone: a deliberately dark app screen in both themes */
+.phone{background:var(--ph-body);border-radius:38px;padding:12px;box-shadow:0 18px 40px -18px rgba(10,12,20,.55)}
+.screen{background:var(--ph-screen);color:var(--ph-fg);border-radius:28px;min-height:660px;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.feedbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px 10px;border-bottom:1px solid var(--ph-line);font:500 12px var(--f-mono);color:var(--ph-muted)}
+.feedbar .app{font:800 18px var(--f-display);color:var(--ph-fg);letter-spacing:-.01em}
+.feedbar button{font:500 11px var(--f-mono);color:var(--ph-fg);background:transparent;border:1px solid var(--ph-line);border-radius:999px;padding:4px 10px;cursor:pointer}
+.feedbar button:disabled{opacity:.4;cursor:default}
+.post{display:flex;flex-direction:column;gap:10px;padding:12px 14px 0}
+.post-head{display:flex;align-items:center;gap:8px;font-size:14px}
+.avatar{width:28px;height:28px;border-radius:50%;flex:none;border:2px solid var(--ph-screen);box-shadow:0 0 0 1.5px var(--ph-line)}
+.sugg{margin-left:auto;font:400 11px var(--f-mono);color:var(--ph-muted)}
+.art{position:relative;aspect-ratio:4/5;max-width:100%;border-radius:14px;overflow:hidden;display:flex;align-items:flex-end;padding:18px;
+  background:radial-gradient(circle at 78% 18%,rgba(255,255,255,.32),transparent 34%),radial-gradient(circle at 12% 88%,rgba(0,0,0,.35),transparent 45%),linear-gradient(155deg,var(--c),color-mix(in srgb,var(--c) 40%,#05060a))}
+.art-title{font:800 clamp(24px,7vw,32px)/1.12 var(--f-display);color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.35);text-wrap:balance}
+.prog{position:absolute;top:10px;left:12px;right:12px;height:3px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:#fff}
+.prog.run i{animation:fill 5s linear forwards}
+@keyframes fill{to{width:100%}}
+.actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.act{display:inline-flex;align-items:center;gap:6px;background:transparent;color:var(--ph-fg);border:1px solid var(--ph-line);border-radius:999px;padding:7px 12px;font:500 13px var(--f-body);cursor:pointer}
+.act svg{width:18px;height:18px}
+.act[aria-pressed="true"]{background:var(--ph-like);border-color:var(--ph-like);color:#fff}
+.act.ni{margin-left:auto;border-style:dashed}
+.likes{margin:0;font:600 13px var(--f-body)}
+.cap{margin:0;font-size:13px;color:var(--ph-muted)}
+.cap b{color:var(--ph-fg)}
+.next{margin:auto 14px 14px;background:var(--ph-fg);color:var(--ph-screen);border:0;border-radius:14px;padding:13px;font:600 15px var(--f-body);cursor:pointer}
+.ph-msg{flex:1;display:flex;flex-direction:column;gap:14px;padding:26px 22px 22px}
+.ph-msg h2{margin:0;font:800 30px/1.15 var(--f-display);text-wrap:balance}
+.ph-msg p{margin:0;color:var(--ph-muted);font-size:15px}
+.ph-msg p b{color:var(--ph-fg)}
+.ph-msg ul{margin:0;padding-left:18px;color:var(--ph-muted);font-size:14px;display:grid;gap:6px}
+.ph-msg ul b{color:var(--ph-fg)}
+.ph-btns{margin-top:auto;display:grid;gap:10px}
+.btn{border:0;border-radius:14px;padding:13px 14px;font:600 15px var(--f-body);cursor:pointer;background:var(--ph-fg);color:var(--ph-screen)}
+.btn.ghost{background:transparent;color:var(--ph-fg);border:1px solid var(--ph-line)}
+.toast{position:absolute;left:14px;right:14px;bottom:76px;background:var(--ph-toast);color:var(--ph-fg);font-size:13px;padding:10px 12px;border-radius:10px}
+.kbd{font:400 12px var(--f-mono);color:var(--ph-muted)}
+
+/* Notebook */
+.notebook{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:24px clamp(16px,3vw,32px) 28px;min-width:0;
+  background-image:linear-gradient(color-mix(in srgb,var(--line) 55%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--line) 55%,transparent) 1px,transparent 1px);
+  background-size:22px 22px;display:grid;gap:22px}
+.nb-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 16px}
+.nb-head h2{margin:0;font:800 26px/1.15 var(--f-display);letter-spacing:-.01em}
+.tag{font:500 11px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);background:var(--paper);padding:3px 8px;border-radius:4px}
+.rec{display:inline-flex;align-items:center;gap:6px;color:var(--rec);border-color:color-mix(in srgb,var(--rec) 40%,var(--line))}
+.rec::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--rec);animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+.nb p{margin:0}
+.sub{margin:0 0 10px;font:500 12px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.big{font:800 56px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.sigrow{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.redact{display:grid;gap:8px}
+.redact div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:center}
+.redact span{height:12px;background:var(--redact);border-radius:2px}
+.redact i{height:12px;background:var(--redact);opacity:.85;border-radius:2px;transition:width .5s ease}
+.verdict{font:600 clamp(20px,2.6vw,26px)/1.35 var(--f-body);text-wrap:balance}
+.verdict b{font-family:var(--f-display);font-weight:800}
+.strip{display:grid;grid-template-columns:repeat(30,minmax(0,1fr));gap:3px}
+.strip.r2{grid-template-columns:repeat(20,minmax(0,1fr))}
+.strip span{aspect-ratio:1/2;border-radius:2px;max-width:100%}
+.strip span.ni{outline:2px solid var(--ink);outline-offset:-2px;opacity:.45}
+.strip-labels{display:flex;justify-content:space-between;gap:8px;font:400 12px var(--f-mono);color:var(--muted);margin-top:6px}
+.compare{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px}
+.compare div{border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:10px 12px}
+.compare b{display:block;font:800 22px var(--f-display);font-variant-numeric:tabular-nums}
+.compare small{color:var(--muted);font-size:13px}
+.bars{display:grid;gap:7px}
+.bar{display:grid;grid-template-columns:118px minmax(0,1fr) 44px;gap:10px;align-items:center;font-size:13px}
+.bar .track{height:12px;background:color-mix(in srgb,var(--line) 70%,transparent);border-radius:2px;overflow:hidden}
+.bar .track i{display:block;height:100%;border-radius:2px;transition:width .5s ease}
+.bar .pct{font:500 12px var(--f-mono);text-align:right;font-variant-numeric:tabular-nums}
+.log{margin:0;padding:0;list-style:none;display:grid;gap:6px;font:400 13px/1.45 var(--f-mono)}
+.log li{display:flex;justify-content:space-between;gap:12px;border-bottom:1px dashed var(--line);padding-bottom:6px}
+.log li span:first-child{min-width:0}
+.log li span:last-child{white-space:nowrap;font-weight:500}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:2px;display:inline-block}
+.note{border-left:3px solid var(--accent);padding:4px 0 4px 14px;color:var(--ink)}
+.note p+p{margin-top:8px}
+.goal{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.goal div{border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:12px}
+.goal b{font:800 30px var(--f-display);font-variant-numeric:tabular-nums}
+.goal small{color:var(--muted)}
+.goal .ok{color:var(--ok)}.goal .no{color:var(--rec)}
+.discuss{border-top:2px solid var(--ink);padding-top:16px}
+.discuss ol{margin:0;padding-left:22px;display:grid;gap:8px}
+.nb-btns{display:flex;flex-wrap:wrap;gap:10px}
+.nb-btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 16px;font:600 14px var(--f-body);cursor:pointer}
+.nb-btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+footer{font-size:13px;color:var(--muted);max-width:75ch}
+button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (max-width:480px){.bar{grid-template-columns:90px minmax(0,1fr) 40px}.redact div{grid-template-columns:80px minmax(0,1fr)}.compare,.goal{grid-template-columns:minmax(0,1fr)}}
+@media (prefers-reduced-motion:reduce){.prog.run i{animation:none;width:100%}.rec::before{animation:none}.bar .track i,.redact i{transition:none}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="mast">
+    <div>
+      <p class="eyebrow" id="eyebrow"></p>
+      <h1 id="h1"></h1>
+      <p class="lede" id="lede"></p>
+    </div>
+    <div class="lang" role="group" aria-label="Language / 語言">
+      <button type="button" id="lang-en" data-l="en">EN</button>
+      <button type="button" id="lang-zh" data-l="zh">中文</button>
+    </div>
+  </header>
+  <main class="stage">
+    <section class="phone" aria-label="Feed"><div class="screen" id="screen"></div></section>
+    <aside class="notebook nb" id="notebook" aria-live="polite"></aside>
+  </main>
+  <footer id="foot"></footer>
+</div>
+
+<script>
+/* ---------- Content ---------- */
+const CATS={
+  look:{color:"#D9468F",comp:true,en:["Appearance & filters","Appearance"],zh:["外貌與濾鏡","外貌"]},
+  body:{color:"#E07A2E",comp:true,en:["Fitness & diet culture","Diet culture"],zh:["健身與飲食文化","飲食文化"]},
+  life:{color:"#C49517",comp:true,en:["Luxury & lifestyle","Lifestyle"],zh:["炫富與生活風格","生活風格"]},
+  drama:{color:"#B8383E",comp:true,en:["Drama & gossip","Drama"],zh:["八卦與爭議","八卦"]},
+  friends:{color:"#2F8F6B",comp:false,en:["Friends & family","Friends"],zh:["朋友與家人","朋友"]},
+  hobby:{color:"#3A72C4",comp:false,en:["Hobbies & skills","Hobbies"],zh:["興趣與技能","興趣"]},
+  animals:{color:"#7A5BC7",comp:false,en:["Animals","Animals"],zh:["動物","動物"]},
+  funny:{color:"#1E95A3",comp:false,en:["Comedy & memes","Comedy"],zh:["搞笑與迷因","搞笑"]}
+};
+const KEYS=Object.keys(CATS);
+/* Platform boost: these types get a head start because they keep people watching. */
+const BOOST={look:.5,body:.4,life:.4,drama:.5,friends:0,hobby:0,animals:0,funny:0};
+const STUCK={look:6,body:6.5,life:3,drama:3.5,friends:0,hobby:0,animals:0,funny:0};
+/* Each post: [user, likes, EN title, EN caption, 中文標題, 中文說明] */
+const POSTS={
+  look:[["mei.glow",38211,"Glow-up in 30 days","before vs after (filter on, obviously)","30 天變美計畫","前後對比（當然有開濾鏡）"],["yuting_",21540,"Rating every filter so you don't have to","part 4","幫你把所有濾鏡評分完了","第 4 集"],["kai.fits",17402,"If your jawline isn't this, try this","save for later","下顎線不夠明顯？試試這招","先存起來"],["soft.daily",26930,"My 12-step night skincare","worth it?","我的 12 步驟晚間保養","值得嗎？"],["hsin__",14388,"Finally looked good in a group photo","took 40 tries","終於在團體照裡拍得好看","拍了 40 次"],["beautylab.tw",31277,"Which face shape are you?","comment yours","你是哪種臉型？","留言告訴我"],["ivy.ootd",19055,"Rate my outfit 1 to 10","be honest","幫我的穿搭打分數，1 到 10","說實話"],["lumi.edit",42716,"How I edit every selfie","no one can tell","我每張自拍都這樣修","沒人看得出來"]],
+  body:[["fit.chen",24310,"Summer body starts today","no excuses","夏日身材從今天開始","沒有藉口"],["cleaneats.jo",33102,"What I eat in a day","school day version","我一天吃什麼","上學日版本"],["gymrat.lee",15877,"No rest days. Ever.","discipline > motivation","永遠不休息","自律大於動機"],["run.ann",20441,"The 5am routine that changed me","try it for a week","改變我的早上 5 點作息","試一週看看"],["shred.club",27519,"Why you're not seeing results","you're doing this wrong","為什麼你一直沒成果","你做錯了"],["tia.moves",22903,"Abs in 10 minutes","every single day","10 分鐘練出腹肌","每天都要做"],["macro.max",29760,"Foods I stopped eating","list in comments","我戒掉的食物","清單在留言"],["lean.season",18624,"Body check: week 3","progress not perfection?","身材檢查：第 3 週","進步不求完美？"]],
+  life:[["jetset.ray",25118,"Weekend in Tokyo, again","third time this year","又去東京過週末","今年第三次"],["rich.tea",19902,"Unboxing my new phone","the old one was fine lol","開箱我的新手機","舊的其實還能用哈"],["villa.vibes",30455,"Our hotel room has a pool","family trip","我們的飯店房間有泳池","家庭旅行"],["sneaker.vault",16210,"My collection hit 40 pairs","which is your fave","球鞋收藏破 40 雙","你最愛哪雙"],["cafe.hop",12730,"Three cafés in one day","weekend reset","一天跑三間咖啡廳","週末充電"],["luxe.lin",23384,"Birthday gift haul","so spoiled","生日禮物開箱","太被寵了"],["firstclass.k",14966,"Upgraded again","window seat always","又升等了","永遠靠窗"],["dream.desk",21047,"My dream room setup","full tour","我的夢想房間","完整導覽"]],
+  drama:[["tea.spill.hs",41203,"Guess who wasn't invited","the group chat knows","猜猜誰沒被邀","群組都知道"],["anon.confess",35874,"Anonymous: rate your classmates","submit in bio","匿名：幫同學打分數","投稿連結在簡介"],["screenshot.q",28432,"Leaked group chat, part 2","receipts","群組對話外流第二彈","有截圖"],["the.real.tea",33019,"She posted THAT?","before it gets deleted","她居然發那個？","趁還沒刪快看"],["hot.take.daily",22675,"Unpopular opinion thread","fight in the comments","不受歡迎意見串","留言區開戰"],["expose.page",30981,"Exposing fake friends","names soon","揭發假朋友","名字快公布"],["who.said",18440,"Blind item: class president","you know who","匿名爆料：班長","你知道是誰"],["ratio.king",26508,"This reply section is wild","read all of it","這個留言區太扯","全部看完"]],
+  friends:[["class207",412,"Hotpot night after exams","we survived","考完試去吃火鍋","我們活下來了"],["debate.team",887,"We won the semifinal!","finals next week","我們贏了準決賽！","下週決賽"],["grandma.sun",1543,"Grandma learned to video call","she called 9 times","阿嬤學會視訊了","她打了 9 次"],["alex.wu",236,"Study group, 11pm, still going","send snacks","讀書會，晚上 11 點還在讀","送宵夜來"],["hoops.hs",519,"Practice clip. We're improving","slowly","練球影片，有在進步","慢慢來"],["jo.lin",764,"My sister's first day of school","so tiny","妹妹開學第一天","好小隻"],["photo.club",301,"Join photography club!","Tuesdays, room 302","加入攝影社！","週二，302 教室"],["bff.pei",1102,"Ten years of friendship","since kindergarten","十年的友情","從幼稚園開始"]],
+  hobby:[["guitar.day12",933,"Learning guitar, day 12","my fingers hurt","學吉他第 12 天","手指好痛"],["sketch.min",1407,"I drew my cat, badly","she is not impressed","我畫了我的貓（很醜）","她不太滿意"],["code.kid",688,"I made my first game","it has one level","我做了第一個遊戲","只有一關"],["baker.yu",1219,"Pineapple cake attempt #2","better than #1","鳳梨酥第二次挑戰","比第一次好"],["photo.walk",2860,"Kaohsiung at blue hour","Love River tonight","藍調時刻的高雄","今晚的愛河"],["plant.parent",1734,"My cactus bloomed","after 3 years","我的仙人掌開花了","等了 3 年"],["lego.lab",3092,"Built a tiny night market","took a month","用樂高蓋迷你夜市","花了一個月"],["chess.tw",574,"Puzzle of the day","white to move","今日西洋棋題","白先走"]],
+  animals:[["shiba.mochi",5481,"Shiba refuses to walk","every single time","柴犬拒絕散步","每次都這樣"],["campus.cat",3920,"School cat asleep in class","respect","校貓在教室睡覺","尊重"],["otter.daily",6702,"Otters holding hands","so they don't drift apart","牽手的水獺","這樣才不會漂走"],["duckling.cam",4318,"Ducklings vs stairs","they made it","小鴨挑戰樓梯","成功了"],["goat.opinions",2655,"This goat has opinions","loud ones","這隻山羊很有意見","很大聲"],["parrot.pal",3187,"Parrot says good morning","at 5am","鸚鵡說早安","早上 5 點"],["kitten.zoom",4876,"Kitten meets mirror","who is that","小貓第一次照鏡子","那是誰"],["rescue.dogs",7713,"Adopted after 200 days","happy ending","等了 200 天終於被領養","幸福結局"]],
+  funny:[["meme.hs",4402,"Teachers when the bell rings","you know the face","鐘聲響起時的老師","你懂那個表情"],["lol.daily",3815,"Me pretending to study","fooling no one","假裝在讀書的我","騙不了任何人"],["skit.bros",5209,"Group project roles","be honest, which one","分組報告的角色","老實說你是哪個"],["dadjoke.tw",1928,"Dad joke of the day","sorry in advance","今日冷笑話","先說抱歉"],["cat.memes",2774,"Monday energy","same","星期一的能量","同"],["sketch.duo",3561,"Wifi drops during the test","nooo","考試時網路斷了","不要啊"],["pun.master",2093,"Bubble tea puns, ranked","tapioca-n't stop","珍奶諧音梗排名","珍的停不下來"],["typo.life",3340,"Autocorrect ruined my apology","i'm so sorry ducks","自動選字毀了我的道歉","我真的很抱鴨"]]
+};
+
+/* ---------- Interface text ---------- */
+const T={
+en:{
+  eyebrow:"Algorithm literacy · classroom game",h1:"What the Feed Knows",
+  lede:"Scroll 30 posts the way you normally would. You won't search, follow, or type anything. Then open the algorithm's notebook and see what it learned about you.",
+  foot:"A simplified model for classroom use. Real platforms use far more signals, but the core loop is the same: what you pause on becomes what you see. All accounts and posts are fictional.",
+  r1:"Round 1",r2:"Round 2",
+  introH:"Just scroll.",introP:"You'll see 30 posts. Treat them like your real feed.",
+  introL:"<li><b>Pause</b> on anything that catches your eye.</li><li><b>Like</b> or <b>replay</b> only if you really would.</li><li>Skip what bores you.</li>",
+  introP2:"Don't try to beat the game yet. Round 2 is for that.",start:"Start scrolling",
+  keys:"Keys: ↓ or Space next · L like · R replay",
+  postN:(n,t)=>`Post ${n} / ${t}`,reset:"Reset suggestions",sugg:"Suggested for you",
+  like:"Like",replay:"Replay",ni:"Not interested",likes:n=>`${n.toLocaleString("en-US")} likes`,next:"Next post ↓",
+  toastReset:"Suggestions reset. Everything it learned about you is gone.",
+  r1done:"Round 1 done",r1doneH:"30 posts. Nothing typed.",
+  r1doneP:"You never told the feed what you like. Open the notebook to see what it decided anyway.",
+  toR2:"Round 2: Escape the rabbit hole",againR1:"Play Round 1 again",
+  r2H:"Escape the rabbit hole.",r2P:"You get 20 posts. You win if your <b>last 10 posts</b> have:",
+  r2L:"<li>at least <b>5 different types</b>, and</li><li>no more than <b>3 comparison posts</b> (warm colors)</li>",
+  r2P2:"New tools: <b>Not interested</b> on every post, and <b>Reset suggestions</b> (one use). Pausing still counts.",
+  stuck:"Start from a stuck feed",mine:"Start from my Round 1 feed",
+  r2done:"Round 2 done",winH:"You got out.",loseH:"Still stuck.",
+  winP:"Your feed opened back up. Check the notebook to see what did it.",
+  loseP:"The feed kept pulling you back. Check the notebook to see why.",
+  retry:"Try Round 2 again",restart:"Start over from Round 1",startOver:"Start over",
+  nbTitle:"The algorithm's notebook",recording:"Recording",locked:"Locked",
+  sigs:"Signals recorded",sigsNote:"pauses, likes and replays",
+  redactLbl:"What it thinks you want · redacted until post 30",
+  lockedNote:"Every second you spend on a post is written down here. So is every like and replay. You'll see the full notebook when Round 1 ends.",
+  revealTitle:"What it learned about you",unlocked:"Unlocked",
+  verdict:(lab,col,p)=>`To this feed, you are mostly <b style="color:${col}">${lab}</b>. That's a ${p} chance for your next post.`,
+  your30:"Your 30 posts, in order",post1:"Post 1",testing:"Posts 1–5: testing you at random",
+  first10:"First 10 posts",last10:"Last 10 posts",typesN:n=>`${n} types`,compN:n=>`${n} comparison posts`,
+  odds:"Odds for your next post",strongest:"Strongest signals you sent",
+  paused:s=>`paused ${s}s`,liked:"liked",replayed:n=>`replayed ×${n}`,
+  none:"You skipped almost everything, so it learned very little. Most of what you saw came from the head start below.",
+  receipt:"The receipt",timeW:"Time watched",likesW:"Likes",replaysW:"Replays",skips:"Quick skips (under 1s)",typed:"Things you typed or searched",sec:s=>`${s}s`,
+  note1:"<b>Pausing is a vote.</b> Any post you looked at for more than a second counted as interest, even if it made you feel worse.",
+  note2:"<b>The game was tilted.</b> Before you scrolled at all, four types got a boost because they keep people watching: Appearance, Diet culture, Lifestyle and Drama.",
+  warm:"Warm: comparison content",cool:"Cool: connection and interests",
+  liveTitle:"Round 2: the notebook is open",live:"Live",liveP:"This time you can watch the odds change after every post.",
+  typesL10:"Types in last 10 posts",need5:"need 5+",compL10:"Comparison posts in last 10",max3:"max 3",
+  soFar:"Your Round 2 feed so far",nothing:"Nothing yet.",
+  winT:"You got out",loseT:"Still stuck",result:"Round 2 result",
+  your20:"Your 20 posts · outlined = marked Not interested",did:"What you did",
+  niCount:"Marked Not interested",pausedComp:"Paused on a comparison post anyway",usedReset:"Used Reset suggestions",yes:"yes",no:"no",compOdds:"Comparison odds for your next post",
+  pausedNote:n=>`You paused on ${n} comparison post${n>1?"s":""}. Each pause told the feed to send more, even when you were only looking.`,
+  resetNote:"Reset erased what the feed had learned about you. It did not remove the platform's boost, so comparison content started creeping back right away.",
+  noResetNote:"Not interested works one post at a time. Reset is faster, but it can't remove the boost the platform gives some content.",
+  catherine:"This is one reason harmful content can return after someone unfollows and blocks, as Catherine describes in the Utah Insight segment. Users can steer, but the platform's design still pulls.",
+  discussT:"Discuss",
+  discuss:["Which of your actions did the algorithm count as interest? Which one surprised you?","Four types got a head start before you did anything. Why might a platform design it that way?","In Round 2, what worked? Did any content come back after you tried to remove it?","Catherine, in the Utah Insight segment, unfollowed and blocked accounts but still got harmful videos. How does this game help explain that?","Design one \"seatbelt\": a feature a platform could add to protect teens without banning the app."]
+},
+zh:{
+  eyebrow:"演算法素養 · 課堂遊戲",h1:"動態牆知道你什麼",
+  lede:"像平常一樣滑完 30 則貼文。你不需要搜尋、追蹤或輸入任何東西。滑完後打開演算法的筆記本，看看它從你身上學到了什麼。",
+  foot:"這是課堂用的簡化模型。真實平台使用的訊號多得多，但核心機制相同：你停在哪裡，就會看到更多那類內容。所有帳號與貼文皆為虛構。",
+  r1:"第一回合",r2:"第二回合",
+  introH:"照常滑就好。",introP:"你會看到 30 則貼文，就當作是你真正的動態牆。",
+  introL:"<li>看到吸引你的就<b>停下來</b>。</li><li>真的會<b>按讚</b>或<b>重看</b>時才按。</li><li>無聊的就滑走。</li>",
+  introP2:"先不要想破解遊戲，那是第二回合的事。",start:"開始滑",
+  keys:"鍵盤：↓ 或空白鍵下一則 · L 按讚 · R 重看",
+  postN:(n,t)=>`第 ${n} / ${t} 則`,reset:"重設推薦",sugg:"為你推薦",
+  like:"讚",replay:"重看",ni:"不感興趣",likes:n=>`${n.toLocaleString("zh-TW")} 個讚`,next:"下一則 ↓",
+  toastReset:"推薦已重設，它學到的關於你的一切都清除了。",
+  r1done:"第一回合結束",r1doneH:"30 則貼文，零輸入。",
+  r1doneP:"你從沒告訴動態牆你喜歡什麼。打開筆記本，看看它還是替你決定了什麼。",
+  toR2:"第二回合：逃出兔子洞",againR1:"重玩第一回合",
+  r2H:"逃出兔子洞。",r2P:"你有 20 則貼文。<b>最後 10 則</b>符合以下條件就獲勝：",
+  r2L:"<li>至少 <b>5 種不同類型</b>，而且</li><li>比較型貼文（暖色）<b>不超過 3 則</b></li>",
+  r2P2:"新工具：每則貼文都有<b>不感興趣</b>，還有<b>重設推薦</b>（限用一次）。停留仍然會被記錄。",
+  stuck:"從被困住的動態牆開始",mine:"從我第一回合的動態牆開始",
+  r2done:"第二回合結束",winH:"你逃出來了。",loseH:"還是被困住。",
+  winP:"你的動態牆重新變得多元。看看筆記本，是什麼起了作用。",
+  loseP:"動態牆一直把你拉回去。看看筆記本找原因。",
+  retry:"再玩一次第二回合",restart:"從第一回合重新開始",startOver:"重新開始",
+  nbTitle:"演算法的筆記本",recording:"記錄中",locked:"已鎖定",
+  sigs:"已記錄訊號",sigsNote:"停留、按讚與重看",
+  redactLbl:"它認為你想看什麼 · 第 30 則後公開",
+  lockedNote:"你在每則貼文停留的每一秒都會記在這裡，每次按讚和重看也是。第一回合結束後就能看到完整筆記本。",
+  revealTitle:"它從你身上學到了什麼",unlocked:"已解鎖",
+  verdict:(lab,col,p)=>`對這個動態牆來說，你主要是<b style="color:${col}">${lab}</b>的觀眾。你的下一則貼文有 ${p} 的機率是這類內容。`,
+  your30:"你的 30 則貼文（依順序）",post1:"第 1 則",testing:"第 1–5 則：隨機測試你",
+  first10:"前 10 則",last10:"後 10 則",typesN:n=>`${n} 種類型`,compN:n=>`${n} 則比較型貼文`,
+  odds:"下一則貼文的機率",strongest:"你送出最強的訊號",
+  paused:s=>`停留 ${s} 秒`,liked:"按讚",replayed:n=>`重看 ×${n}`,
+  none:"你幾乎全部滑過，所以它學到的很少。你看到的內容大多來自下方說明的起跑優勢。",
+  receipt:"明細",timeW:"觀看時間",likesW:"按讚",replaysW:"重看",skips:"快速滑過（不到 1 秒）",typed:"你輸入或搜尋的東西",sec:s=>`${s} 秒`,
+  note1:"<b>停留就是投票。</b>任何你看超過一秒的貼文都被算成「有興趣」，即使它讓你心情變差。",
+  note2:"<b>遊戲一開始就不公平。</b>你還沒開始滑，就有四類內容因為能讓人一直看下去而被加權：外貌、飲食文化、生活風格、八卦。",
+  warm:"暖色：比較型內容",cool:"冷色：人際連結與興趣",
+  liveTitle:"第二回合：筆記本已公開",live:"即時",liveP:"這次你可以看到每則貼文後機率如何變化。",
+  typesL10:"最後 10 則的類型數",need5:"需 5 種以上",compL10:"最後 10 則的比較型貼文",max3:"最多 3 則",
+  soFar:"目前的第二回合動態牆",nothing:"還沒有。",
+  winT:"你逃出來了",loseT:"還是被困住",result:"第二回合結果",
+  your20:"你的 20 則貼文 · 有框線＝標記不感興趣",did:"你做了什麼",
+  niCount:"標記不感興趣",pausedComp:"仍在比較型貼文上停留",usedReset:"使用重設推薦",yes:"是",no:"否",compOdds:"下一則是比較型內容的機率",
+  pausedNote:n=>`你在 ${n} 則比較型貼文上停留。每次停留都在告訴動態牆「多給我一點」，即使你只是看看。`,
+  resetNote:"重設清除了動態牆學到的關於你的偏好，但沒有移除平台的加權，所以比較型內容馬上又慢慢回來。",
+  noResetNote:"「不感興趣」一次只能處理一則。重設比較快，但無法移除平台給某些內容的加權。",
+  catherine:"這說明了為什麼有人取消追蹤、封鎖帳號後，有害內容仍會回來，就像 Catherine 在 Utah Insight 影片中說的。使用者可以調整方向，但平台的設計仍在拉扯。",
+  discussT:"討論",
+  discuss:["演算法把你的哪些動作當成「有興趣」？哪一個讓你意外？","你還沒開始滑，就有四類內容被加權。平台為什麼可能這樣設計？","第二回合中什麼方法有效？你想移除的內容有沒有再出現？","Utah Insight 影片中，Catherine 取消追蹤並封鎖帳號，仍持續收到有害影片。這個遊戲如何解釋這件事？","設計一條「安全帶」：平台可以加入什麼功能來保護青少年，而不必禁用整個 App？"]
+}};
+let L="en";
+try{const saved=localStorage.getItem("feed-lang");if(saved==="en"||saved==="zh")L=saved;else if((navigator.language||"").toLowerCase().startsWith("zh"))L="zh"}catch(e){if((navigator.language||"").toLowerCase().startsWith("zh"))L="zh"}
+const t=k=>T[L][k];
+const catLabel=k=>CATS[k][L][0],catShort=k=>CATS[k][L][1];
+const pTitle=p=>L==="zh"?p[4]:p[2],pCap=p=>L==="zh"?p[5]:p[3];
+
+/* ---------- Game state ---------- */
+const $=s=>document.querySelector(s);
+const screenEl=$("#screen"),nb=$("#notebook");
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const pct=v=>Math.round(v*100)+"%";
+let S,hiddenAt=null,toastTimer=null,curPhone=null,curNb=null;
+function fresh(){S={round:0,n:0,w:Object.fromEntries(KEYS.map(k=>[k,0])),hist:[],cur:null,pools:{},resetUsed:false}}
+function draw(cat){if(!S.pools[cat]||!S.pools[cat].length)S.pools[cat]=shuffle(POSTS[cat].map((_,i)=>i));return POSTS[cat][S.pools[cat].pop()]}
+function odds(){const testing=S.round===1&&S.n<5;const raw=KEYS.map(k=>testing?1:Math.exp(.55*S.w[k]+BOOST[k]));const sum=raw.reduce((a,b)=>a+b,0);return Object.fromEntries(KEYS.map((k,i)=>[k,raw[i]/sum]))}
+function pick(){const o=odds();let r=Math.random();for(const k of KEYS){r-=o[k];if(r<=0)return k}return KEYS[KEYS.length-1]}
+const roundHist=r=>S.hist.filter(h=>h.round===r);
+document.addEventListener("visibilitychange",()=>{if(!S||!S.cur)return;if(document.hidden)hiddenAt=performance.now();else if(hiddenAt){S.cur.hidden+=performance.now()-hiddenAt;hiddenAt=null}});
+
+const ICON={
+  like:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20s-7-4.4-9.2-8.6C1.2 8.2 3.2 4.5 6.8 4.5c2 0 3.4 1.1 4.2 2.4.8-1.3 2.2-2.4 4.2-2.4 3.6 0 5.6 3.7 4 6.9C19 15.6 12 20 12 20z"/></svg>',
+  replay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
+  ni:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/></svg>'
+};
+const show=(phone,book)=>{if(phone){curPhone=phone;phone()}if(book){curNb=book;book()}};
+
+/* ---------- Phone screens ---------- */
+function renderIntro(){
+  screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("r1")}</span></div>
+  <div class="ph-msg"><h2>${t("introH")}</h2><p>${t("introP")}</p><ul>${t("introL")}</ul><p>${t("introP2")}</p>
+  <div class="ph-btns"><button class="btn" id="go">${t("start")}</button><span class="kbd">${t("keys")}</span></div></div>`;
+  $("#go").onclick=startR1;
+}
+function nextPost(){const cat=pick();S.cur={cat,post:draw(cat),start:performance.now(),hidden:0,liked:false,replays:0}}
+function renderPost(){
+  const c=S.cur,p=c.post,col=CATS[c.cat].color,total=S.round===1?30:20,r2=S.round===2;
+  screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("postN")(S.n+1,total)}</span>${r2?`<button id="reset" ${S.resetUsed?"disabled":""}>${t("reset")}</button>`:""}</div>
+  <article class="post"><div class="post-head"><span class="avatar" style="background:${col}"></span><b>@${p[0]}</b><span class="sugg">${t("sugg")}</span></div>
+  <div class="art" style="--c:${col}"><div class="prog run" id="prog"><i></i></div><span class="art-title">${pTitle(p)}</span></div>
+  <div class="actions"><button class="act" id="like" aria-pressed="${c.liked}">${ICON.like}${t("like")}</button><button class="act" id="replay">${ICON.replay}${t("replay")}</button>${r2?`<button class="act ni" id="ni">${ICON.ni}${t("ni")}</button>`:""}</div>
+  <p class="likes" id="likes">${t("likes")(p[1]+(c.liked?1:0))}</p><p class="cap"><b>${p[0]}</b> ${pCap(p)}</p></article>
+  <button class="next" id="next">${t("next")}</button>`;
+  $("#like").onclick=doLike;$("#replay").onclick=doReplay;$("#next").onclick=()=>advance(false);
+  if(r2){$("#ni").onclick=()=>advance(true);$("#reset").onclick=doReset}
+}
+function doLike(){const c=S.cur;c.liked=!c.liked;$("#like").setAttribute("aria-pressed",c.liked);$("#likes").textContent=t("likes")(c.post[1]+(c.liked?1:0));curNb()}
+function doReplay(){S.cur.replays++;const p=$("#prog");p.classList.remove("run");void p.offsetWidth;p.classList.add("run");curNb()}
+function doReset(){S.resetUsed=true;KEYS.forEach(k=>S.w[k]=0);$("#reset").disabled=true;toast(t("toastReset"));curNb()}
+function toast(msg){let el=screenEl.querySelector(".toast");if(!el){el=document.createElement("div");el.className="toast";el.setAttribute("role","status");screenEl.appendChild(el)}el.textContent=msg;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.remove(),3200)}
+
+function advance(ni){
+  const c=S.cur;const dwell=Math.min(12,Math.max(0,(performance.now()-c.start-c.hidden)/1000));
+  let d;if(ni)d=-4;else{d=dwell<1?-.4:Math.min(dwell-1,8)*.45;if(c.liked)d+=1.6;d+=Math.min(c.replays,3)*1.2}
+  S.w[c.cat]=clamp(S.w[c.cat]+d,-6,12);
+  S.hist.push({round:S.round,cat:c.cat,post:c.post,dwell,liked:c.liked,replays:c.replays,delta:d,ni});
+  S.n++;S.cur=null;
+  if(S.round===1&&S.n>=30)return endR1();
+  if(S.round===2&&S.n>=20)return endR2();
+  nextPost();renderPost();curNb();
+}
+function startR1(){fresh();S.round=1;nextPost();show(renderPost,renderLocked)}
+function renderR1End(){
+  screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("r1done")}</span></div>
+  <div class="ph-msg"><h2>${t("r1doneH")}</h2><p>${t("r1doneP")}</p>
+  <div class="ph-btns"><button class="btn" id="r2">${t("toR2")}</button><button class="btn ghost" id="again">${t("againR1")}</button></div></div>`;
+  $("#r2").onclick=()=>show(renderR2Intro);$("#again").onclick=startR1;
+}
+function endR1(){show(renderR1End,renderReveal);if(window.matchMedia("(max-width:860px)").matches)nb.scrollIntoView({behavior:"smooth",block:"start"})}
+function renderR2Intro(){
+  screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("r2")}</span></div>
+  <div class="ph-msg"><h2>${t("r2H")}</h2><p>${t("r2P")}</p><ul>${t("r2L")}</ul><p>${t("r2P2")}</p>
+  <div class="ph-btns"><button class="btn" id="stuck">${t("stuck")}</button><button class="btn ghost" id="mine">${t("mine")}</button></div></div>`;
+  $("#stuck").onclick=()=>startR2(true);$("#mine").onclick=()=>startR2(false);
+}
+function startR2(stuck){
+  if(!roundHist(1).length&&!stuck){stuck=true}
+  S.hist=roundHist(1);S.round=2;S.n=0;S.resetUsed=false;
+  if(stuck)S.w={...STUCK};
+  nextPost();show(renderPost,renderEscapeLive);
+}
+function renderR2End(){
+  const g=goalState();
+  screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("r2done")}</span></div>
+  <div class="ph-msg"><h2>${g.win?t("winH"):t("loseH")}</h2><p>${g.win?t("winP"):t("loseP")}</p>
+  <div class="ph-btns"><button class="btn" id="retry">${t("retry")}</button><button class="btn ghost" id="restart">${t("restart")}</button></div></div>`;
+  $("#retry").onclick=()=>show(renderR2Intro);$("#restart").onclick=resetAll;
+}
+function endR2(){show(renderR2End,renderEscapeResult)}
+function resetAll(){fresh();show(renderIntro,renderLocked)}
+
+/* ---------- Notebook ---------- */
+function signalCount(){let n=0;for(const h of roundHist(1))n+=1+(h.liked?1:0)+h.replays;if(S.cur&&S.round===1)n+=(S.cur.liked?1:0)+S.cur.replays;return n}
+function renderLocked(){
+  const playing=S.round===1,o=playing?odds():Object.fromEntries(KEYS.map(k=>[k,1/8]));
+  const rows=KEYS.map((k,i)=>`<div><span style="width:${60+((i*37)%50)}%"></span><i style="width:${Math.min(100,o[k]*260)}%"></i></div>`).join("");
+  nb.innerHTML=`<div class="nb-head"><h2>${t("nbTitle")}</h2><span class="tag ${playing?"rec":""}">${playing?t("recording"):t("locked")}</span></div>
+  <div><p class="sub">${t("sigs")}</p><div class="sigrow"><span class="big">${playing?signalCount():0}</span><span style="color:var(--muted)">${t("sigsNote")}</span></div></div>
+  <div><p class="sub">${t("redactLbl")}</p><div class="redact">${rows}</div></div>
+  <div class="note"><p>${t("lockedNote")}</p></div>`;
+}
+const esc=s=>s.replace(/"/g,"&quot;");
+function stripHTML(list,cls){return `<div class="strip ${cls||""}">${list.map(h=>`<span class="${h.ni?"ni":""}" style="background:${CATS[h.cat].color}" title="${esc(catShort(h.cat)+": "+pTitle(h.post))}"></span>`).join("")}</div>`}
+function barsHTML(o){return `<div class="bars">${KEYS.slice().sort((a,b)=>o[b]-o[a]).map(k=>`<div class="bar"><span>${catShort(k)}</span><span class="track"><i style="width:${o[k]*100}%;background:${CATS[k].color}"></i></span><span class="pct">${pct(o[k])}</span></div>`).join("")}</div>`}
+const legendHTML=()=>`<div class="legend"><span><i style="background:${CATS.look.color}"></i><i style="background:${CATS.drama.color}"></i>${t("warm")}</span><span><i style="background:${CATS.friends.color}"></i><i style="background:${CATS.hobby.color}"></i>${t("cool")}</span></div>`;
+const discussHTML=()=>`<section class="discuss"><p class="sub">${t("discussT")}</p><ol>${t("discuss").map(q=>`<li>${q}</li>`).join("")}</ol></section>`;
+const types=l=>new Set(l.map(h=>h.cat)).size, comps=l=>l.filter(h=>CATS[h.cat].comp).length;
+
+function renderReveal(){
+  const h=roundHist(1),o=odds(),top=KEYS.slice().sort((a,b)=>o[b]-o[a])[0];
+  const first=h.slice(0,10),last=h.slice(-10);
+  const strong=h.map((x,i)=>({...x,i:i+1})).filter(x=>x.delta>0).sort((a,b)=>b.delta-a.delta).slice(0,5);
+  const total=h.reduce((a,x)=>a+x.dwell,0),likes=h.filter(x=>x.liked).length,reps=h.reduce((a,x)=>a+x.replays,0),skips=h.filter(x=>x.dwell<1).length;
+  const line=x=>[`#${x.i} ${pTitle(x.post)}`,t("paused")(x.dwell.toFixed(1)),x.liked?t("liked"):"",x.replays?t("replayed")(x.replays):""].filter(Boolean).join(" · ");
+  nb.innerHTML=`<div class="nb-head"><h2>${t("revealTitle")}</h2><span class="tag">${t("unlocked")}</span></div>
+  <p class="verdict">${t("verdict")(catLabel(top),CATS[top].color,pct(o[top]))}</p>
+  <div><p class="sub">${t("your30")}</p>${stripHTML(h)}<div class="strip-labels"><span>${t("post1")}</span><span>${t("testing")}</span><span>30</span></div>
+  <div class="compare"><div><small>${t("first10")}</small><b>${t("typesN")(types(first))}</b><small>${t("compN")(comps(first))}</small></div><div><small>${t("last10")}</small><b>${t("typesN")(types(last))}</b><small>${t("compN")(comps(last))}</small></div></div></div>
+  <div><p class="sub">${t("odds")}</p>${barsHTML(o)}</div>
+  <div><p class="sub">${t("strongest")}</p>${strong.length?`<ul class="log">${strong.map(x=>`<li><span>${line(x)}</span><span style="color:${CATS[x.cat].color}">+${x.delta.toFixed(1)} ${catShort(x.cat)}</span></li>`).join("")}</ul>`:`<p>${t("none")}</p>`}</div>
+  <div><p class="sub">${t("receipt")}</p><ul class="log"><li><span>${t("timeW")}</span><span>${t("sec")(total.toFixed(0))}</span></li><li><span>${t("likesW")}</span><span>${likes}</span></li><li><span>${t("replaysW")}</span><span>${reps}</span></li><li><span>${t("skips")}</span><span>${skips}</span></li><li><span>${t("typed")}</span><span>0</span></li></ul></div>
+  <div class="note"><p>${t("note1")}</p><p>${t("note2")}</p></div>
+  ${legendHTML()}
+  <div class="nb-btns"><button class="nb-btn" id="nbR2">${t("toR2")}</button><button class="nb-btn ghost" id="nbAgain">${t("againR1")}</button></div>
+  ${discussHTML()}`;
+  $("#nbR2").onclick=()=>show(renderR2Intro);$("#nbAgain").onclick=startR1;
+}
+function goalState(){const l=roundHist(2).slice(-10);const ty=types(l),c=comps(l);return {ty,c,win:l.length>=10&&ty>=5&&c<=3}}
+function goalHTML(g){return `<div class="goal"><div><small>${t("typesL10")}</small><br><b class="${g.ty>=5?"ok":"no"}">${g.ty}</b> <small>${t("need5")}</small></div><div><small>${t("compL10")}</small><br><b class="${g.c<=3?"ok":"no"}">${g.c}</b> <small>${t("max3")}</small></div></div>`}
+function renderEscapeLive(){
+  const h=roundHist(2);
+  nb.innerHTML=`<div class="nb-head"><h2>${t("liveTitle")}</h2><span class="tag">${t("live")}</span></div>
+  <p>${t("liveP")}</p>${goalHTML(goalState())}
+  <div><p class="sub">${t("soFar")}</p>${h.length?stripHTML(h,"r2"):`<p style="color:var(--muted)">${t("nothing")}</p>`}</div>
+  <div><p class="sub">${t("odds")}</p>${barsHTML(odds())}</div>${legendHTML()}`;
+}
+function renderEscapeResult(){
+  const g=goalState(),h=roundHist(2),o=odds();
+  const niN=h.filter(x=>x.ni).length,pc=h.filter(x=>!x.ni&&CATS[x.cat].comp&&x.dwell>=1).length;
+  const co=KEYS.filter(k=>CATS[k].comp).reduce((a,k)=>a+o[k],0);
+  nb.innerHTML=`<div class="nb-head"><h2>${g.win?t("winT"):t("loseT")}</h2><span class="tag">${t("result")}</span></div>
+  ${goalHTML(g)}
+  <div><p class="sub">${t("your20")}</p>${stripHTML(h,"r2")}</div>
+  <div><p class="sub">${t("did")}</p><ul class="log"><li><span>${t("niCount")}</span><span>${niN}</span></li><li><span>${t("pausedComp")}</span><span>${pc}</span></li><li><span>${t("usedReset")}</span><span>${S.resetUsed?t("yes"):t("no")}</span></li><li><span>${t("compOdds")}</span><span>${pct(co)}</span></li></ul></div>
+  <div class="note">${pc?`<p>${t("pausedNote")(pc)}</p>`:""}<p>${S.resetUsed?t("resetNote"):t("noResetNote")}</p><p>${t("catherine")}</p></div>
+  ${legendHTML()}
+  <div class="nb-btns"><button class="nb-btn" id="nbRetry">${t("retry")}</button><button class="nb-btn ghost" id="nbStart">${t("startOver")}</button></div>
+  ${discussHTML()}`;
+  $("#nbRetry").onclick=()=>show(renderR2Intro);$("#nbStart").onclick=resetAll;
+}
+
+/* ---------- Language ---------- */
+function applyStatic(){
+  document.documentElement.lang=L==="zh"?"zh-Hant":"en";
+  ["eyebrow","h1","lede","foot"].forEach(id=>$("#"+id).textContent=t(id));
+  $("#lang-en").setAttribute("aria-pressed",L==="en");$("#lang-zh").setAttribute("aria-pressed",L==="zh");
+}
+function setLang(l){
+  if(l===L)return;L=l;try{localStorage.setItem("feed-lang",l)}catch(e){}
+  applyStatic();if(curPhone)curPhone();if(curNb)curNb();
+}
+$("#lang-en").onclick=()=>setLang("en");$("#lang-zh").onclick=()=>setLang("zh");
+
+document.addEventListener("keydown",e=>{
+  if(!S||!S.cur||e.target.closest("input,textarea,.lang"))return;
+  const k=e.key.toLowerCase();
+  if(k==="arrowdown"||k===" "){e.preventDefault();advance(false)}
+  else if(k==="l")doLike();else if(k==="r")doReplay();else if(k==="n"&&S.round===2)advance(true);
+});
+applyStatic();resetAll();
+</script>
+</body>
+</html>
+
+```
