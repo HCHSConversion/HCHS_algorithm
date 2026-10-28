@@ -53,9 +53,8 @@ html[lang="zh-Hant"] h1{letter-spacing:.02em;font-weight:900}
 .post-head{display:flex;align-items:center;gap:8px;font-size:14px}
 .avatar{width:28px;height:28px;border-radius:50%;flex:none;border:2px solid var(--ph-screen);box-shadow:0 0 0 1.5px var(--ph-line)}
 .sugg{margin-left:auto;font:400 11px var(--f-mono);color:var(--ph-muted)}
-.art{position:relative;aspect-ratio:4/5;max-width:100%;border-radius:14px;overflow:hidden;display:flex;align-items:flex-end;padding:18px;
-  background:radial-gradient(circle at 78% 18%,rgba(255,255,255,.32),transparent 34%),radial-gradient(circle at 12% 88%,rgba(0,0,0,.35),transparent 45%),linear-gradient(155deg,var(--c),color-mix(in srgb,var(--c) 40%,#05060a))}
-.art-title{font:800 clamp(24px,7vw,32px)/1.12 var(--f-display);color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.35);text-wrap:balance}
+.art{position:relative;aspect-ratio:4/5;max-width:100%;border-radius:14px;overflow:hidden;display:flex;align-items:flex-end;padding:18px;background:var(--c);}
+.art-title{font:800 clamp(24px,7vw,32px)/1.12 var(--f-display);color:#fff;text-shadow:0 2px 8px rgba(0,0,0,0.8), 0 0 2px rgba(0,0,0,0.9);text-wrap:balance;position:relative;z-index:2;}
 .prog{position:absolute;top:10px;left:12px;right:12px;height:3px;border-radius:2px;background:rgba(255,255,255,.28);overflow:hidden}
 .prog i{display:block;height:100%;width:0;background:#fff}
 .prog.run i{animation:fill 5s linear forwards}
@@ -153,8 +152,8 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
       <button type="button" id="lang-zh" data-l="zh">中文</button>
     </div>
   </header>
-  <main class="stage">
-    <section class="phone" aria-label="Feed"><div class="screen" id="screen"></div></section>
+  <main class="stage" id="stage">
+    <section class="phone" id="phone-container" aria-label="Feed"><div class="screen" id="screen"></div></section>
     <aside class="notebook nb" id="notebook" aria-live="polite"></aside>
   </main>
   <footer id="foot"></footer>
@@ -165,7 +164,7 @@ button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 const CATS={
   look:{color:"#D9468F",comp:true,en:["Appearance & filters","Appearance"],zh:["外貌與濾鏡","外貌"]},
   body:{color:"#E07A2E",comp:true,en:["Fitness & diet culture","Diet culture"],zh:["健身與飲食文化","飲食文化"]},
-  life:{color:"#C49517",comp:true,en:["Luxury & lifestyle","Lifestyle"],zh:["炫富與生活風格","生活風格"]},
+  life:{color:"#C49517",comp:true,en:["lifestyle","Lifestyle"],zh:["生活風格","生活風格"]},
   drama:{color:"#B8383E",comp:true,en:["Drama & gossip","Drama"],zh:["八卦與爭議","八卦"]},
   friends:{color:"#2F8F6B",comp:false,en:["Friends & family","Friends"],zh:["朋友與家人","朋友"]},
   hobby:{color:"#3A72C4",comp:false,en:["Hobbies & skills","Hobbies"],zh:["興趣與技能","興趣"]},
@@ -173,22 +172,19 @@ const CATS={
   funny:{color:"#1E95A3",comp:false,en:["Comedy & memes","Comedy"],zh:["搞笑與迷因","搞笑"]}
 };
 const KEYS=Object.keys(CATS);
-/* Platform boost: these types get a head start because they keep people watching. */
 const BOOST={look:.5,body:.4,life:.4,drama:.5,friends:0,hobby:0,animals:0,funny:0};
 const STUCK={look:6,body:6.5,life:3,drama:3.5,friends:0,hobby:0,animals:0,funny:0};
-/* Each post: [user, likes, EN title, EN caption, 中文標題, 中文說明] */
 const POSTS={
-  look:[["mei.glow",38211,"Glow-up in 30 days","before vs after (filter on, obviously)","30 天變美計畫","前後對比（當然有開濾鏡）"],["yuting_",21540,"Rating every filter so you don't have to","part 4","幫你把所有濾鏡評分完了","第 4 集"],["kai.fits",17402,"If your jawline isn't this, try this","save for later","下顎線不夠明顯？試試這招","先存起來"],["soft.daily",26930,"My 12-step night skincare","worth it?","我的 12 步驟晚間保養","值得嗎？"],["hsin__",14388,"Finally looked good in a group photo","took 40 tries","終於在團體照裡拍得好看","拍了 40 次"],["beautylab.tw",31277,"Which face shape are you?","comment yours","你是哪種臉型？","留言告訴我"],["ivy.ootd",19055,"Rate my outfit 1 to 10","be honest","幫我的穿搭打分數，1 到 10","說實話"],["lumi.edit",42716,"How I edit every selfie","no one can tell","我每張自拍都這樣修","沒人看得出來"]],
-  body:[["fit.chen",24310,"Summer body starts today","no excuses","夏日身材從今天開始","沒有藉口"],["cleaneats.jo",33102,"What I eat in a day","school day version","我一天吃什麼","上學日版本"],["gymrat.lee",15877,"No rest days. Ever.","discipline > motivation","永遠不休息","自律大於動機"],["run.ann",20441,"The 5am routine that changed me","try it for a week","改變我的早上 5 點作息","試一週看看"],["shred.club",27519,"Why you're not seeing results","you're doing this wrong","為什麼你一直沒成果","你做錯了"],["tia.moves",22903,"Abs in 10 minutes","every single day","10 分鐘練出腹肌","每天都要做"],["macro.max",29760,"Foods I stopped eating","list in comments","我戒掉的食物","清單在留言"],["lean.season",18624,"Body check: week 3","progress not perfection?","身材檢查：第 3 週","進步不求完美？"]],
-  life:[["jetset.ray",25118,"Weekend in Tokyo, again","third time this year","又去東京過週末","今年第三次"],["rich.tea",19902,"Unboxing my new phone","the old one was fine lol","開箱我的新手機","舊的其實還能用哈"],["villa.vibes",30455,"Our hotel room has a pool","family trip","我們的飯店房間有泳池","家庭旅行"],["sneaker.vault",16210,"My collection hit 40 pairs","which is your fave","球鞋收藏破 40 雙","你最愛哪雙"],["cafe.hop",12730,"Three cafés in one day","weekend reset","一天跑三間咖啡廳","週末充電"],["luxe.lin",23384,"Birthday gift haul","so spoiled","生日禮物開箱","太被寵了"],["firstclass.k",14966,"Upgraded again","window seat always","又升等了","永遠靠窗"],["dream.desk",21047,"My dream room setup","full tour","我的夢想房間","完整導覽"]],
-  drama:[["tea.spill.hs",41203,"Guess who wasn't invited","the group chat knows","猜猜誰沒被邀","群組都知道"],["anon.confess",35874,"Anonymous: rate your classmates","submit in bio","匿名：幫同學打分數","投稿連結在簡介"],["screenshot.q",28432,"Leaked group chat, part 2","receipts","群組對話外流第二彈","有截圖"],["the.real.tea",33019,"She posted THAT?","before it gets deleted","她居然發那個？","趁還沒刪快看"],["hot.take.daily",22675,"Unpopular opinion thread","fight in the comments","不受歡迎意見串","留言區開戰"],["expose.page",30981,"Exposing fake friends","names soon","揭發假朋友","名字快公布"],["who.said",18440,"Blind item: class president","you know who","匿名爆料：班長","你知道是誰"],["ratio.king",26508,"This reply section is wild","read all of it","這個留言區太扯","全部看完"]],
-  friends:[["class207",412,"Hotpot night after exams","we survived","考完試去吃火鍋","我們活下來了"],["debate.team",887,"We won the semifinal!","finals next week","我們贏了準決賽！","下週決賽"],["grandma.sun",1543,"Grandma learned to video call","she called 9 times","阿嬤學會視訊了","她打了 9 次"],["alex.wu",236,"Study group, 11pm, still going","send snacks","讀書會，晚上 11 點還在讀","送宵夜來"],["hoops.hs",519,"Practice clip. We're improving","slowly","練球影片，有在進步","慢慢來"],["jo.lin",764,"My sister's first day of school","so tiny","妹妹開學第一天","好小隻"],["photo.club",301,"Join photography club!","Tuesdays, room 302","加入攝影社！","週二，302 教室"],["bff.pei",1102,"Ten years of friendship","since kindergarten","十年的友情","從幼稚園開始"]],
-  hobby:[["guitar.day12",933,"Learning guitar, day 12","my fingers hurt","學吉他第 12 天","手指好痛"],["sketch.min",1407,"I drew my cat, badly","she is not impressed","我畫了我的貓（很醜）","她不太滿意"],["code.kid",688,"I made my first game","it has one level","我做了第一個遊戲","只有一關"],["baker.yu",1219,"Pineapple cake attempt #2","better than #1","鳳梨酥第二次挑戰","比第一次好"],["photo.walk",2860,"Kaohsiung at blue hour","Love River tonight","藍調時刻的高雄","今晚的愛河"],["plant.parent",1734,"My cactus bloomed","after 3 years","我的仙人掌開花了","等了 3 年"],["lego.lab",3092,"Built a tiny night market","took a month","用樂高蓋迷你夜市","花了一個月"],["chess.tw",574,"Puzzle of the day","white to move","今日西洋棋題","白先走"]],
-  animals:[["shiba.mochi",5481,"Shiba refuses to walk","every single time","柴犬拒絕散步","每次都這樣"],["campus.cat",3920,"School cat asleep in class","respect","校貓在教室睡覺","尊重"],["otter.daily",6702,"Otters holding hands","so they don't drift apart","牽手的水獺","這樣才不會漂走"],["duckling.cam",4318,"Ducklings vs stairs","they made it","小鴨挑戰樓梯","成功了"],["goat.opinions",2655,"This goat has opinions","loud ones","這隻山羊很有意見","很大聲"],["parrot.pal",3187,"Parrot says good morning","at 5am","鸚鵡說早安","早上 5 點"],["kitten.zoom",4876,"Kitten meets mirror","who is that","小貓第一次照鏡子","那是誰"],["rescue.dogs",7713,"Adopted after 200 days","happy ending","等了 200 天終於被領養","幸福結局"]],
-  funny:[["meme.hs",4402,"Teachers when the bell rings","you know the face","鐘聲響起時的老師","你懂那個表情"],["lol.daily",3815,"Me pretending to study","fooling no one","假裝在讀書的我","騙不了任何人"],["skit.bros",5209,"Group project roles","be honest, which one","分組報告的角色","老實說你是哪個"],["dadjoke.tw",1928,"Dad joke of the day","sorry in advance","今日冷笑話","先說抱歉"],["cat.memes",2774,"Monday energy","same","星期一的能量","同"],["sketch.duo",3561,"Wifi drops during the test","nooo","考試時網路斷了","不要啊"],["pun.master",2093,"Bubble tea puns, ranked","tapioca-n't stop","珍奶諧音梗排名","珍的停不下來"],["typo.life",3340,"Autocorrect ruined my apology","i'm so sorry ducks","自動選字毀了我的道歉","我真的很抱鴨"]]
+  look:[["mei.glow",38211,"Glow-up in 30 days","before vs after (filter on, obviously)","30 天變美計畫","前後對比（當然有開濾鏡）","https://www.dangerous-business.com/wp-content/uploads/2023/10/Europe-tips.jpg"],["yuting_",21540,"Rating every filter so you don't have to","part 4","幫你把所有濾鏡評分完了","第 4 集","https://picsum.photos/id/65/600/800"],["kai.fits",17402,"If your jawline isn't this, try this","save for later","下顎線不夠明顯？試試這招","先存起來","https://picsum.photos/id/66/600/800"],["soft.daily",26930,"My 12-step night skincare","worth it?","我的 12 步驟晚間保養","值得嗎？","https://picsum.photos/id/91/600/800"],["hsin__",14388,"Finally looked good in a group photo","took 40 tries","終於在團體照裡拍得好看","拍了 40 次","https://picsum.photos/id/102/600/800"],["beautylab.tw",31277,"Which face shape are you?","comment yours","你是哪種臉型？","留言告訴我","https://picsum.photos/id/103/600/800"],["ivy.ootd",19055,"Rate my outfit 1 to 10","be honest","幫我的穿搭打分數，1 到 10","說實話","https://picsum.photos/id/106/600/800"],["lumi.edit",42716,"How I edit every selfie","no one can tell","我每張自拍都這樣修","沒人看得出來","https://picsum.photos/id/119/600/800"]],
+  body:[["fit.chen",24310,"Summer body starts today","no excuses","夏日身材從今天開始","沒有藉口","https://picsum.photos/id/129/600/800"],["cleaneats.jo",33102,"What I eat in a day","school day version","我一天吃什麼","上學日版本","https://picsum.photos/id/142/600/800"],["gymrat.lee",15877,"No rest days. Ever.","discipline > motivation","永遠不休息","自律大於動機","https://picsum.photos/id/145/600/800"],["run.ann",20441,"The 5am routine that changed me","try it for a week","改變我的早上 5 點作息","試一週看看","https://picsum.photos/id/160/600/800"],["shred.club",27519,"Why you're not seeing results","you're doing this wrong","為什麼你一直沒成果","你做錯了","https://picsum.photos/id/225/600/800"],["tia.moves",22903,"Abs in 10 minutes","every single day","10 分鐘練出腹肌","每天都要做","https://picsum.photos/id/250/600/800"],["macro.max",29760,"Foods I stopped eating","list in comments","我戒掉的食物","清單在留言","https://picsum.photos/id/292/600/800"],["lean.season",18624,"Body check: week 3","progress not perfection?","身材檢查：第 3 週","進步不求完美？","https://picsum.photos/id/319/600/800"]],
+  life:[["jetset.ray",25118,"Weekend in Tokyo, again","third time this year","又去東京過週末","今年第三次","https://picsum.photos/id/326/600/800"],["rich.tea",19902,"Unboxing my new phone","the old one was fine lol","開箱我的新手機","舊的其實還能用哈","https://picsum.photos/id/338/600/800"],["villa.vibes",30455,"Our hotel room has a pool","family trip","我們的飯店房間有泳池","家庭旅行","https://picsum.photos/id/355/600/800"],["sneaker.vault",16210,"My collection hit 40 pairs","which is your fave","球鞋收藏破 40 雙","你最愛哪雙","https://picsum.photos/id/364/600/800"],["cafe.hop",12730,"Three cafés in one day","weekend reset","一天跑三間咖啡廳","週末充電","https://picsum.photos/id/399/600/800"],["luxe.lin",23384,"Birthday gift haul","so spoiled","生日禮物開箱","太被寵了","https://picsum.photos/id/429/600/800"],["firstclass.k",14966,"Upgraded again","window seat always","又升等了","永遠靠窗","https://picsum.photos/id/431/600/800"],["dream.desk",21047,"My dream room setup","full tour","我的夢想房間","完整導覽","https://picsum.photos/id/445/600/800"]],
+  drama:[["tea.spill.hs",41203,"Guess who wasn't invited","the group chat knows","猜猜誰沒被邀","群組都知道","https://picsum.photos/id/447/600/800"],["anon.confess",35874,"Anonymous: rate your classmates","submit in bio","匿名：幫同學打分數","投稿連結在簡介","https://picsum.photos/id/449/600/800"],["screenshot.q",28432,"Leaked group chat, part 2","receipts","群組對話外流第二彈","有截圖","https://picsum.photos/id/452/600/800"],["the.real.tea",33019,"She posted THAT?","before it gets deleted","她居然發那個？","趁還沒刪快看","https://picsum.photos/id/473/600/800"],["hot.take.daily",22675,"Unpopular opinion thread","fight in the comments","不受歡迎意見串","留言區開戰","https://picsum.photos/id/514/600/800"],["expose.page",30981,"Exposing fake friends","names soon","揭發假朋友","名字快公布","https://picsum.photos/id/532/600/800"],["who.said",18440,"Blind item: class president","you know who","匿名爆料：班長","你知道是誰","https://picsum.photos/id/548/600/800"],["ratio.king",26508,"This reply section is wild","read all of it","這個留言區太扯","全部看完","https://picsum.photos/id/562/600/800"]],
+  friends:[["class207",412,"Hotpot night after exams","we survived","考完試去吃火鍋","我們活下來了","https://picsum.photos/id/577/600/800"],["debate.team",887,"We won the semifinal!","finals next week","我們贏了準決賽！","下週決賽","https://picsum.photos/id/582/600/800"],["grandma.sun",1543,"Grandma learned to video call","she called 9 times","阿嬤學會視訊了","她打了 9 次","https://picsum.photos/id/593/600/800"],["alex.wu",236,"Study group, 11pm, still going","send snacks","讀書會，晚上 11 點還在讀","送宵夜來","https://picsum.photos/id/625/600/800"],["hoops.hs",519,"Practice clip. We're improving","slowly","練球影片，有在進步","慢慢來","https://picsum.photos/id/646/600/800"],["jo.lin",764,"My sister's first day of school","so tiny","妹妹開學第一天","好小隻","https://picsum.photos/id/659/600/800"],["photo.club",301,"Join photography club!","Tuesdays, room 302","加入攝影社！","週二，302 教室","https://picsum.photos/id/669/600/800"],["bff.pei",1102,"Ten years of friendship","since kindergarten","十年的友情","從幼稚園開始","https://picsum.photos/id/670/600/800"]],
+  hobby:[["guitar.day12",933,"Learning guitar, day 12","my fingers hurt","學吉他第 12 天","手指好痛","https://picsum.photos/id/684/600/800"],["sketch.min",1407,"I drew my cat, badly","she is not impressed","我畫了我的貓（很醜）","她不太滿意","https://picsum.photos/id/688/600/800"],["code.kid",688,"I made my first game","it has one level","我做了第一個遊戲","只有一關","https://picsum.photos/id/718/600/800"],["baker.yu",1219,"Pineapple cake attempt #2","better than #1","鳳梨酥第二次挑戰","比第一次好","https://picsum.photos/id/729/600/800"],["photo.walk",2860,"Kaohsiung at blue hour","Love River tonight","藍調時刻的高雄","今晚的愛河","https://picsum.photos/id/749/600/800"],["plant.parent",1734,"My cactus bloomed","after 3 years","我的仙人掌開花了","等了 3 年","https://picsum.photos/id/755/600/800"],["lego.lab",3092,"Built a tiny night market","took a month","用樂高蓋迷你夜市","花了一個月","https://picsum.photos/id/788/600/800"],["chess.tw",574,"Puzzle of the day","white to move","今日西洋棋題","白先走","https://picsum.photos/id/790/600/800"]],
+  animals:[["shiba.mochi",5481,"Shiba refuses to walk","every single time","柴犬拒絕散步","每次都這樣","https://picsum.photos/id/823/600/800"],["campus.cat",3920,"School cat asleep in class","respect","校貓在教室睡覺","尊重","https://picsum.photos/id/883/600/800"],["otter.daily",6702,"Otters holding hands","so they don't drift apart","牽手的水獺","這樣才不會漂走","https://picsum.photos/id/1025/600/800"],["duckling.cam",4318,"Ducklings vs stairs","they made it","小鴨挑戰樓梯","成功了","https://picsum.photos/id/1062/600/800"],["goat.opinions",2655,"This goat has opinions","loud ones","這隻山羊很有意見","很大聲","https://picsum.photos/id/1074/600/800"],["parrot.pal",3187,"Parrot says good morning","at 5am","鸚鵡說早安","早上 5 點","https://picsum.photos/id/1084/600/800"],["kitten.zoom",4876,"Kitten meets mirror","who is that","小貓第一次照鏡子","那是誰","https://picsum.photos/id/1080/600/800"],["rescue.dogs",7713,"Adopted after 200 days","happy ending","等了 200 天終於被領養","幸福結局","https://picsum.photos/id/1081/600/800"]],
+  funny:[["meme.hs",4402,"Teachers when the bell rings","you know the face","鐘聲響起時的老師","你懂那個表情","https://picsum.photos/id/1082/600/800"],["lol.daily",3815,"Me pretending to study","fooling no one","假裝在讀書的我","騙不了任何人","https://picsum.photos/id/1084/600/800"],["skit.bros",5209,"Group project roles","be honest, which one","分組報告的角色","老實說你是哪個","https://picsum.photos/id/1069/600/800"],["dadjoke.tw",1928,"Dad joke of the day","sorry in advance","今日冷笑話","先說抱歉","https://picsum.photos/id/1060/600/800"],["cat.memes",2774,"Monday energy","same","星期一的能量","同","https://picsum.photos/id/1059/600/800"],["sketch.duo",3561,"Wifi drops during the test","nooo","考試時網路斷了","不要啊","https://picsum.photos/id/1050/600/800"],["pun.master",2093,"Bubble tea puns, ranked","tapioca-n't stop","珍奶諧音梗排名","珍的停不下來","https://picsum.photos/id/1043/600/800"],["typo.life",3340,"Autocorrect ruined my apology","i'm so sorry ducks","自動選字毀了我的道歉","我真的很抱鴨","https://picsum.photos/id/1041/600/800"]]
 };
 
-/* ---------- Interface text ---------- */
 const T={
 en:{
   eyebrow:"Algorithm literacy · classroom game",h1:"What the Feed Knows",
@@ -298,13 +294,13 @@ const t=k=>T[L][k];
 const catLabel=k=>CATS[k][L][0],catShort=k=>CATS[k][L][1];
 const pTitle=p=>L==="zh"?p[4]:p[2],pCap=p=>L==="zh"?p[5]:p[3];
 
-/* ---------- Game state ---------- */
 const $=s=>document.querySelector(s);
-const screenEl=$("#screen"),nb=$("#notebook");
+const screenEl=$("#screen"),nb=$("#notebook"),stageEl=$("#stage"),phoneContainerEl=$("#phone-container");
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const pct=v=>Math.round(v*100)+"%";
 let S,hiddenAt=null,toastTimer=null,curPhone=null,curNb=null;
+
 function fresh(){S={round:0,n:0,w:Object.fromEntries(KEYS.map(k=>[k,0])),hist:[],cur:null,pools:{},resetUsed:false}}
 function draw(cat){if(!S.pools[cat]||!S.pools[cat].length)S.pools[cat]=shuffle(POSTS[cat].map((_,i)=>i));return POSTS[cat][S.pools[cat].pop()]}
 function odds(){const testing=S.round===1&&S.n<5;const raw=KEYS.map(k=>testing?1:Math.exp(.55*S.w[k]+BOOST[k]));const sum=raw.reduce((a,b)=>a+b,0);return Object.fromEntries(KEYS.map((k,i)=>[k,raw[i]/sum]))}
@@ -317,27 +313,85 @@ const ICON={
   replay:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>',
   ni:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/></svg>'
 };
-const show=(phone,book)=>{if(phone){curPhone=phone;phone()}if(book){curNb=book;book()}};
+
+// 狀態控制函數：實現手機置中、隱藏/顯示數據畫面、隱藏手機模擬畫面
+function showScreenOnly() {
+  stageEl.style.gridTemplateColumns = "minmax(300px, 400px)";
+  stageEl.style.justifyContent = "center";
+  phoneContainerEl.style.display = "block";
+  nb.style.display = "none";
+}
+
+function showSplitStage() {
+  stageEl.style.gridTemplateColumns = "minmax(300px,380px) minmax(0,1fr)";
+  stageEl.style.justifyContent = "stretch";
+  phoneContainerEl.style.display = "block";
+  nb.style.display = "grid";
+}
+
+function showNotebookOnly() {
+  stageEl.style.gridTemplateColumns = "minmax(0,1fr)";
+  phoneContainerEl.style.display = "none";
+  nb.style.display = "grid";
+}
+
+function show(phone,book){
+  if(phone){curPhone=phone;phone()}
+  if(book){curNb=book;book()}
+}
 
 /* ---------- Phone screens ---------- */
 function renderIntro(){
+  showScreenOnly();
   screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("r1")}</span></div>
   <div class="ph-msg"><h2>${t("introH")}</h2><p>${t("introP")}</p><ul>${t("introL")}</ul><p>${t("introP2")}</p>
   <div class="ph-btns"><button class="btn" id="go">${t("start")}</button><span class="kbd">${t("keys")}</span></div></div>`;
   $("#go").onclick=startR1;
 }
+
 function nextPost(){const cat=pick();S.cur={cat,post:draw(cat),start:performance.now(),hidden:0,liked:false,replays:0}}
+
 function renderPost(){
+  showScreenOnly();
   const c=S.cur,p=c.post,col=CATS[c.cat].color,total=S.round===1?30:20,r2=S.round===2;
   screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("postN")(S.n+1,total)}</span>${r2?`<button id="reset" ${S.resetUsed?"disabled":""}>${t("reset")}</button>`:""}</div>
   <article class="post"><div class="post-head"><span class="avatar" style="background:${col}"></span><b>@${p[0]}</b><span class="sugg">${t("sugg")}</span></div>
-  <div class="art" style="--c:${col}"><div class="prog run" id="prog"><i></i></div><span class="art-title">${pTitle(p)}</span></div>
+  <div class="art" id="art-img" style="--c:${col}; cursor:pointer; user-select:none; touch-action:manipulation;">
+    <img src="${p[6]}" alt="Post Image" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:1;z-index:1;" />
+    <div class="prog run" id="prog" style="position:relative;z-index:2;"><i></i></div>
+    <span class="art-title" style="position:relative;z-index:2;">${pTitle(p)}</span>
+  </div>
   <div class="actions"><button class="act" id="like" aria-pressed="${c.liked}">${ICON.like}${t("like")}</button><button class="act" id="replay">${ICON.replay}${t("replay")}</button>${r2?`<button class="act ni" id="ni">${ICON.ni}${t("ni")}</button>`:""}</div>
   <p class="likes" id="likes">${t("likes")(p[1]+(c.liked?1:0))}</p><p class="cap"><b>${p[0]}</b> ${pCap(p)}</p></article>
   <button class="next" id="next">${t("next")}</button>`;
-  $("#like").onclick=doLike;$("#replay").onclick=doReplay;$("#next").onclick=()=>advance(false);
-  if(r2){$("#ni").onclick=()=>advance(true);$("#reset").onclick=doReset}
+  
+  $("#like").onclick = doLike;
+  $("#replay").onclick = doReplay;
+  $("#next").onclick = () => advance(false);
+  
+  // 🌟 改用 pointerup 事件，同時完美支援手機觸控與電腦滑鼠雙擊
+  let lastTapTime = 0;
+  const artElement = $("#art-img");
+  
+  artElement.onpointerup = (e) => {
+    const currentTime = new Date().getTime();
+    const tapLength = currentTime - lastTapTime;
+    if (tapLength < 350 && tapLength > 0) {
+      // 350毫秒內連續點擊兩次
+      e.preventDefault();
+      if (!S.cur.liked) {
+        doLike();
+      }
+    }
+    lastTapTime = currentTime;
+  };
+
+  if(r2){
+    $("#ni").onclick = () => advance(true);
+    $("#reset").onclick = doReset;
+  }
 }
+
 function doLike(){const c=S.cur;c.liked=!c.liked;$("#like").setAttribute("aria-pressed",c.liked);$("#likes").textContent=t("likes")(c.post[1]+(c.liked?1:0));curNb()}
 function doReplay(){S.cur.replays++;const p=$("#prog");p.classList.remove("run");void p.offsetWidth;p.classList.add("run");curNb()}
 function doReset(){S.resetUsed=true;KEYS.forEach(k=>S.w[k]=0);$("#reset").disabled=true;toast(t("toastReset"));curNb()}
@@ -353,46 +407,54 @@ function advance(ni){
   if(S.round===2&&S.n>=20)return endR2();
   nextPost();renderPost();curNb();
 }
+
 function startR1(){fresh();S.round=1;nextPost();show(renderPost,renderLocked)}
+
 function renderR1End(){
+  showNotebookOnly(); // 結束後隱藏手機模擬畫面，只顯示數據
   screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("r1done")}</span></div>
   <div class="ph-msg"><h2>${t("r1doneH")}</h2><p>${t("r1doneP")}</p>
   <div class="ph-btns"><button class="btn" id="r2">${t("toR2")}</button><button class="btn ghost" id="again">${t("againR1")}</button></div></div>`;
   $("#r2").onclick=()=>show(renderR2Intro);$("#again").onclick=startR1;
 }
+
 function endR1(){show(renderR1End,renderReveal);if(window.matchMedia("(max-width:860px)").matches)nb.scrollIntoView({behavior:"smooth",block:"start"})}
+
 function renderR2Intro(){
+  showScreenOnly();
   screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("r2")}</span></div>
   <div class="ph-msg"><h2>${t("r2H")}</h2><p>${t("r2P")}</p><ul>${t("r2L")}</ul><p>${t("r2P2")}</p>
   <div class="ph-btns"><button class="btn" id="stuck">${t("stuck")}</button><button class="btn ghost" id="mine">${t("mine")}</button></div></div>`;
   $("#stuck").onclick=()=>startR2(true);$("#mine").onclick=()=>startR2(false);
 }
+
 function startR2(stuck){
   if(!roundHist(1).length&&!stuck){stuck=true}
   S.hist=roundHist(1);S.round=2;S.n=0;S.resetUsed=false;
   if(stuck)S.w={...STUCK};
   nextPost();show(renderPost,renderEscapeLive);
 }
+
 function renderR2End(){
-  const g=goalState();
+  showNotebookOnly(); // 結束後隱藏手機模擬畫面，只顯示數據
+  const g = goalState(); // 🌟 補上這行，宣告變數 g
   screenEl.innerHTML=`<div class="feedbar"><span class="app">feed</span><span>${t("r2done")}</span></div>
   <div class="ph-msg"><h2>${g.win?t("winH"):t("loseH")}</h2><p>${g.win?t("winP"):t("loseP")}</p>
   <div class="ph-btns"><button class="btn" id="retry">${t("retry")}</button><button class="btn ghost" id="restart">${t("restart")}</button></div></div>`;
   $("#retry").onclick=()=>show(renderR2Intro);$("#restart").onclick=resetAll;
 }
+
 function endR2(){show(renderR2End,renderEscapeResult)}
 function resetAll(){fresh();show(renderIntro,renderLocked)}
 
 /* ---------- Notebook ---------- */
 function signalCount(){let n=0;for(const h of roundHist(1))n+=1+(h.liked?1:0)+h.replays;if(S.cur&&S.round===1)n+=(S.cur.liked?1:0)+S.cur.replays;return n}
+
 function renderLocked(){
-  const playing=S.round===1,o=playing?odds():Object.fromEntries(KEYS.map(k=>[k,1/8]));
-  const rows=KEYS.map((k,i)=>`<div><span style="width:${60+((i*37)%50)}%"></span><i style="width:${Math.min(100,o[k]*260)}%"></i></div>`).join("");
-  nb.innerHTML=`<div class="nb-head"><h2>${t("nbTitle")}</h2><span class="tag ${playing?"rec":""}">${playing?t("recording"):t("locked")}</span></div>
-  <div><p class="sub">${t("sigs")}</p><div class="sigrow"><span class="big">${playing?signalCount():0}</span><span style="color:var(--muted)">${t("sigsNote")}</span></div></div>
-  <div><p class="sub">${t("redactLbl")}</p><div class="redact">${rows}</div></div>
-  <div class="note"><p>${t("lockedNote")}</p></div>`;
+  // 觀看貼文期間，先隱藏數據畫面
+  nb.style.display = "none";
 }
+
 const esc=s=>s.replace(/"/g,"&quot;");
 function stripHTML(list,cls){return `<div class="strip ${cls||""}">${list.map(h=>`<span class="${h.ni?"ni":""}" style="background:${CATS[h.cat].color}" title="${esc(catShort(h.cat)+": "+pTitle(h.post))}"></span>`).join("")}</div>`}
 function barsHTML(o){return `<div class="bars">${KEYS.slice().sort((a,b)=>o[b]-o[a]).map(k=>`<div class="bar"><span>${catShort(k)}</span><span class="track"><i style="width:${o[k]*100}%;background:${CATS[k].color}"></i></span><span class="pct">${pct(o[k])}</span></div>`).join("")}</div>`}
@@ -401,6 +463,7 @@ const discussHTML=()=>`<section class="discuss"><p class="sub">${t("discussT")}<
 const types=l=>new Set(l.map(h=>h.cat)).size, comps=l=>l.filter(h=>CATS[h.cat].comp).length;
 
 function renderReveal(){
+  showNotebookOnly(); // 結束後顯示數據畫面
   const h=roundHist(1),o=odds(),top=KEYS.slice().sort((a,b)=>o[b]-o[a])[0];
   const first=h.slice(0,10),last=h.slice(-10);
   const strong=h.map((x,i)=>({...x,i:i+1})).filter(x=>x.delta>0).sort((a,b)=>b.delta-a.delta).slice(0,5);
@@ -419,16 +482,22 @@ function renderReveal(){
   ${discussHTML()}`;
   $("#nbR2").onclick=()=>show(renderR2Intro);$("#nbAgain").onclick=startR1;
 }
+
 function goalState(){const l=roundHist(2).slice(-10);const ty=types(l),c=comps(l);return {ty,c,win:l.length>=10&&ty>=5&&c<=3}}
 function goalHTML(g){return `<div class="goal"><div><small>${t("typesL10")}</small><br><b class="${g.ty>=5?"ok":"no"}">${g.ty}</b> <small>${t("need5")}</small></div><div><small>${t("compL10")}</small><br><b class="${g.c<=3?"ok":"no"}">${g.c}</b> <small>${t("max3")}</small></div></div>`}
+
 function renderEscapeLive(){
+  // 第二回合進行時，顯示雙欄（因為第二回合有即時機率圖表需求，如果您希望第二回合也隱藏，可改用 showScreenOnly）
+  showSplitStage();
   const h=roundHist(2);
   nb.innerHTML=`<div class="nb-head"><h2>${t("liveTitle")}</h2><span class="tag">${t("live")}</span></div>
   <p>${t("liveP")}</p>${goalHTML(goalState())}
   <div><p class="sub">${t("soFar")}</p>${h.length?stripHTML(h,"r2"):`<p style="color:var(--muted)">${t("nothing")}</p>`}</div>
   <div><p class="sub">${t("odds")}</p>${barsHTML(odds())}</div>${legendHTML()}`;
 }
+
 function renderEscapeResult(){
+  showNotebookOnly(); // 結束後顯示數據畫面
   const g=goalState(),h=roundHist(2),o=odds();
   const niN=h.filter(x=>x.ni).length,pc=h.filter(x=>!x.ni&&CATS[x.cat].comp&&x.dwell>=1).length;
   const co=KEYS.filter(k=>CATS[k].comp).reduce((a,k)=>a+o[k],0);
@@ -465,5 +534,3 @@ applyStatic();resetAll();
 </script>
 </body>
 </html>
-
-```
